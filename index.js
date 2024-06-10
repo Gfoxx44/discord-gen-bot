@@ -1,4 +1,6 @@
 // Dependencies
+require('dotenv').config();
+const token = process.env.TOKEN;
 const Discord = require('discord.js');
 const fs = require('fs');
 const config = require('./config.json');
