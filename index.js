@@ -5,80 +5,148 @@ const Discord = require('discord.js');
 const fs = require('fs');
 const config = require('./config.json');
 const CatLoggr = require('cat-loggr');
+const readline = require('readline');
 
-// Functions
+// Funktionen
 const client = new Discord.Client();
 const log = new CatLoggr();
+const keep_alive = require('./keep_alive.js')
 
-// New discord collections
+// Neue Discord-Sammlungen
 client.commands = new Discord.Collection();
 
 // Logging
-if (config.debug === true) client.on('debug', stream => log.debug(stream)); // if debug is enabled in config
+if (config.debug === true) client.on('debug', stream => log.debug(stream)); // falls debug im config aktiviert ist
 client.on('warn', message => log.warn(message));
 client.on('error', error => log.error(error));
 
-// Load commands from folder
-const commandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js')); // Command directory
+// Befehle aus dem Ordner laden
+const commandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js')); // Befehlsverzeichnis
 for (const file of commandFiles) {
-	const command = require(`./commands/${file}`); // Load the command
-    log.init(`Loaded command ${file.split('.')[0] === command.name ? file.split('.')[0] : `${file.split('.')[0]} as ${command.name}`}`); // Logging to console
-	client.commands.set(command.name, command); // Set command by name to the discord "commands" collection
+  const command = require(`./commands/${file}`); // Befehl laden
+  log.init(`Loaded command ${file.split('.')[0] === command.name ? file.split('.')[0] : `${file.split('.')[0]} as ${command.name}`}`); // Logging in die Konsole
+  client.commands.set(command.name, command); // Befehl nach Namen in die Discord-"commands"-Sammlung setzen
 };
 
-// Client login
-client.login(config.token);
+// Client-Login
+client.login(process.env.TOKEN);
 
 client.once('ready', () => {
-	log.info(`I am logged in as ${client.user.tag} to Discord!`); // Say hello to console
-    client.user.setActivity(`${config.prefix}help • ${client.user.username.toUpperCase()}`, { type: "LISTENING" }); // Set the bot's activity status
-    /* You can change the activity type to:
-     * LISTENING
-     * WATCHING
-     * COMPETING
-     * STREAMING (you need to add a twitch.tv url next to type like this:   { type: "STREAMING", url: "https://twitch.tv/twitch_username_here"} )
-     * PLAYING (default)
-    */
+  log.info(`I am logged in as ${client.user.tag} to Discord!`); // Begrüßung in der Konsole
+  client.user.setActivity(`${config.prefix}help • ${client.user.username.toUpperCase()}`, { type: "WATCHING" }); // Den Aktivitätsstatus des Bots setzen
+  /* Du kannst den Aktivitätstyp ändern zu:
+   * LISTENING
+   * WATCHING
+   * COMPETING
+   * STREAMING (du musst einen twitch.tv-URL neben dem Typ hinzufügen, wie folgt: { type: "STREAMING", url: "https://twitch.tv/twitch_username_here"} )
+   * PLAYING (Standard)
+  */
+
+  // Alle 5 Minuten zufällige Nachrichten in den Gen-Kanal senden
+  const genChannelId = '1246717441850216448'; // Ersetze dies durch die tatsächliche ID des Gen-Kanals
+  const randomMessages = [
+    "Hello, @BotListener!",
+    "How's it going?",
+    "Don't forget to check out our latest updates!",
+    "Have a great day!",
+    "Remember to be kind to one another.",
+    "What's everyone up to?",
+    "Stay positive and keep pushing forward!",
+    "Did you know? Random facts can be fun!",
+    "Time for a break, grab a coffee!",
+    "Keep calm and chat on!",
+    "Welcome to the server!",
+    "Enjoy your stay here!",
+    "Need any help? Just ask!",
+    "Check out the new channels!",
+    "Make sure to read the rules.",
+    "Feel free to introduce yourself!",
+    "What's your favorite hobby?",
+    "Any gamers here?",
+    "Music lovers, share your playlist!",
+    "Let's keep the conversation friendly.",
+    "Any plans for the weekend?",
+    "Movie night suggestions?",
+    "Share your favorite book!",
+    "Anyone up for a challenge?",
+    "Don't forget to hydrate!",
+    "Share your pet pictures!",
+    "What's your favorite quote?",
+    "Let's discuss some fun facts!",
+    "What's the weather like for you?",
+  ];
+  setInterval(() => {
+    const channel = client.channels.cache.get(genChannelId);
+    if (channel) {
+      const message = randomMessages[Math.floor(Math.random() * randomMessages.length)];
+      channel.send(message);
+    } else {
+      log.error(`Channel with ID ${genChannelId} not found.`);
+    }
+  }, 5 * 60 * 1000); // 5 Minuten Intervall
+
+  // Konsolen-Eingabe zum Senden von Nachrichten an den Discord-Kanal
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
+  });
+
+  rl.on('line', (input) => {
+    const channel = client.channels.cache.get(genChannelId);
+    if (channel) {
+      channel.send(input).catch(err => log.error(`Failed to send message: ${err}`));
+    } else {
+      log.error(`Channel with ID ${genChannelId} not found.`);
+    }
+  });
 });
 
-// Discord message event and command handling
+// Discord Nachrichten-Ereignis und Befehlshandhabung
 client.on('message', (message) => {
-	if (!message.content.startsWith(config.prefix)) return; // If the message does not start with the prefix 
-	if (message.author.bot) return; // If a command executed by a bot
+  if (!message.content.startsWith(config.prefix)) return; // Wenn die Nachricht nicht mit dem Präfix beginnt
+  if (message.author.bot) return; // Wenn ein Befehl von einem Bot ausgeführt wird
 
-    // Split message content to arguments
-	const args = message.content.slice(config.prefix.length).trim().split(/ +/);
-	const command = args.shift().toLowerCase();
+  // Nachrichteninhalt in Argumente aufteilen
+  const args = message.content.slice(config.prefix.length).trim().split(/ +/);
+  const command = args.shift().toLowerCase();
 
-    // If the command does not exists
-	if (config.command.notfound_message === true && !client.commands.has(command)) {
-        return message.channel.send(
-            new Discord.MessageEmbed()
-            .setColor(config.color.red)
-            .setTitle('Unknown command :(')
-            .setDescription(`Sorry, but I cannot find the \`${command}\` command!`)
-            .setFooter(message.author.tag, message.author.displayAvatarURL({ dynamic: true, size: 64 }))
-            .setTimestamp()
-        );
+  // Log-Ausgabe, wenn ein Befehl ausgeführt wird
+  console.log(`User ${message.author.tag} used command: ${command}`);
+
+  // Wenn der Befehl nicht existiert
+  if (config.command.notfound_message === true && !client.commands.has(command)) {
+    return message.channel.send(
+      new Discord.MessageEmbed()
+      .setColor(config.color.red)
+      .setTitle('Unknown command :(')
+      .setDescription(`Sorry, but I cannot find the \`${command}\` command!`)
+      .setFooter(message.author.tag, message.author.displayAvatarURL({ dynamic: true, size: 64 }))
+      .setTimestamp()
+    );
+  };
+
+  // Befehl ausführen
+  try {
+    client.commands.get(command).execute(message, args); // Ausführen
+  } catch (error) {
+    log.error(error); // Logging bei Fehlern
+
+    // Fehlermeldung senden, wenn das "error_message"-Feld in der Konfiguration "true" ist
+    if (config.command.error_message === true) {
+      message.channel.send(
+        new Discord.MessageEmbed()
+        .setColor(config.color.red)
+        .setTitle('Error occurred!')
+        .setDescription(`An error occurred while executing the \`${command}\` command!`)
+        .addField('Error', `\`\`\`js\n${error}\n\`\`\``)
+        .setFooter(message.author.tag, message.author.displayAvatarURL({ dynamic: true, size: 64 }))
+        .setTimestamp()
+      );
     };
-
-    // Executing the command
-	try {
-		client.commands.get(command).execute(message, args); // Execute
-	} catch (error) {
-		log.error(error); // Logging if error
-
-        // Send error messsage if the "error_message" field is "true" in the configuration
-		if (config.command.error_message === true) {
-            message.channel.send(
-                new Discord.MessageEmbed()
-                .setColor(config.color.red)
-                .setTitle('Error occurred!')
-                .setDescription(`An error occurred while executing the \`${command}\` command!`)
-                .addField('Error', `\`\`\`js\n${error}\n\`\`\``)
-                .setFooter(message.author.tag, message.author.displayAvatarURL({ dynamic: true, size: 64 }))
-                .setTimestamp()
-            );
-        };
-	};
+  };
 });
+
+//By ash3r#1000
+//Subscribe 
+// For Help Join https://discord.gg/jsk
+
