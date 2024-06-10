@@ -1,6 +1,5 @@
 // Dependencies
 require('dotenv').config();
-const token = process.env.TOKEN;
 const Discord = require('discord.js');
 const fs = require('fs');
 const config = require('./config.json');
@@ -26,7 +25,7 @@ for (const file of commandFiles) {
   const command = require(`./commands/${file}`); // Befehl laden
   log.init(`Loaded command ${file.split('.')[0] === command.name ? file.split('.')[0] : `${file.split('.')[0]} as ${command.name}`}`); // Logging in die Konsole
   client.commands.set(command.name, command); // Befehl nach Namen in die Discord-"commands"-Sammlung setzen
-};
+}
 
 // Client-Login
 client.login(process.env.TOKEN);
@@ -123,7 +122,7 @@ client.on('message', (message) => {
       .setFooter(message.author.tag, message.author.displayAvatarURL({ dynamic: true, size: 64 }))
       .setTimestamp()
     );
-  };
+  }
 
   // Befehl ausführen
   try {
@@ -142,11 +141,10 @@ client.on('message', (message) => {
         .setFooter(message.author.tag, message.author.displayAvatarURL({ dynamic: true, size: 64 }))
         .setTimestamp()
       );
-    };
-  };
+    }
+  }
 });
 
 //By ash3r#1000
 //Subscribe 
 // For Help Join https://discord.gg/jsk
-
