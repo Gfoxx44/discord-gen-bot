@@ -1,7 +1,7 @@
 {
   "token": "",
-  "prefix": "gen!",
-  "genChannel": "",
+  "prefix": "!m",
+  "genChannel": "1246717441850216448",
   "genCooldown": "1000",
   "color": {
     "green": "0x57F287",
